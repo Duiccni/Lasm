@@ -1,0 +1,59 @@
+org 0x10
+con l1 ($ + 5)
+flush
+con l1 ?
+con l1 31
+con num1 0x7c0
+'''
+:here
+'''
+con num2 -2
+con num3 (&num2 + 3)
+'''
+con num4 (^9 - $ + $$)
+'''
+con char1 '0'
+def 31
+def dword &num3
+def 32
+def word &num2
+def $
+def long ?
+:here2
+def x16 $
+def 'a'
+def 'b'
+---
+times 10 def word ($ + 0xFF00)
+---
+org 0x7c00
+con abc1 0b0101
+def 0x10
+def 0b10
+times 4 jmp ($ + 4)
+jmp 0
+jmp long 0xffff
+def word 0xffff
+def byte 0xffff
+def 0xff
+---
+org 0xff00
+def 2
+jmp long 0x0100
+times (10 - $ + $$) def x8 0
+def '0'
+---
+def 0x1, 0x10, 0x100
+def word 0xa, 0x64
+hlt
+nop
+def "Hello, world!", 0
+jmp eax
+---
+times (^4 - $ + $$) def x8 ?
+---
+con t ?
+con t1 1
+---
+def 0x100
+def byte 0x100
