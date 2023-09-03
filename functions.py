@@ -129,6 +129,7 @@ def splitWithoutSpecs(x: str) -> list[str]:
 			tmp = ""
 		else:
 			tmp += char
+	retu.append(tmp) # Bug fixed.
 	return retu
 
 
@@ -180,6 +181,8 @@ def command_template(split: list[str], *args: Any) -> list[str]:
 	>>> command_template(["eax"], 0xD0, 0xF6, "16")
 	[outline_part1(var.DWORD, 0xF6), 0xD0 + 0]
 	"""
+	if len(args) == 1:
+		args = args[0]
 	tmp = len(split) == 1
 	if tmp and split[0][0].isalpha():
 		index_, size_ = getRegister(split[0])

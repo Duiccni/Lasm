@@ -71,6 +71,13 @@ one_inst = {
 	"nop": "90",
 }
 
+spec_inst = {
+	"not": [0xD0, 0xF6, "16"],
+	"neg": [0xD8, 0xF6, "1e"],
+	"inc": [0xC0, 0xFE, "06"],
+	"dec": [0xC8, 0xFE, "0e"],
+}
+
 added: list[str] = []
 memory: list[str] = []
 

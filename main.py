@@ -78,6 +78,18 @@ def _command_mov(value1: str, value2: str, size: int | None = None) -> list[str]
 """
 
 
+def _OP2IC(
+	bias: int, pos_reg: str
+) -> list[str] | None:  # OP2IC: Outline Part 2 Inc Dec
+	reg_tmp = pos_reg[-2:]
+	if pos_reg in var.regs16_32:
+		retu_: list[str] = []
+		if len(pos_reg) == 3:
+			retu_.append(var.STR_BIT_32)
+		retu_.append(hex(bias + var.regs16_32.index(reg_tmp) % var.REG_INDEX_LEN))
+		return retu_
+
+
 def procCase(_case: str) -> list[str] | None:
 	global test_case, TClen, _disable
 	split = func.splitWithoutSpecs(_case)
@@ -85,6 +97,7 @@ def procCase(_case: str) -> list[str] | None:
 	split.pop(0)
 
 	if not split and command[0].isalpha() and len(command) == 3:
+		print(split, _case)
 		return [var.one_inst[command]]
 
 	match command:
@@ -95,7 +108,7 @@ def procCase(_case: str) -> list[str] | None:
 		case "con":
 			if split[0] in var.constants:
 				func.raiseError(
-					"Constant Overwrite", "Is acceptalbe in this version.", False, index
+					"Constant Overwrite", "Is acceptable in this version.", False, index
 				)
 			var.constants[split[0]] = func.convertInt(split[1])
 		case "flush":
@@ -115,8 +128,89 @@ def procCase(_case: str) -> list[str] | None:
 					]
 				else:
 					tmp = func.convertInt(num)
-		case _:
+					tmp2 = func.findSize(tmp, True)
+					if not c_size:
+						size = var.BYTE if num[0] == "'" else tmp2
+					else:
+						if c_size < tmp2:
+							func.raiseError(
+								"Overflow Error",
+								f"Used size({c_size}) is smaller than should({tmp2}) used.",
+								line=index,
+							)
+						size = c_size
+					return func.memoryProc(tmp, size)
+		case "times":
+			tmp = func.convertInt(split[0])
+			if tmp < 0:
+				func.raiseError(
+					"Index Error",
+					f"The input of 'times' command cant be negative({tmp}).",
+					line=index,
+				)
+				return None
+			TClen += tmp
+			test_case = (
+				test_case[: index + 1]
+				+ [_case[len(split[0]) + 7 :]] * tmp
+				+ test_case[index + 1 :]
+			)
+		case "jmp":
+			retu_: list[str] = []
+			len_tmp = len(split) == 1
+			if (
+				len_tmp and split[0][0].isalpha()
+			):  # Copy of func.outline_part1 but without 8 bit registers.
+				reg_tmp = func.getRegister(split[0])
+				if reg_tmp[1] == var.DWORD:
+					retu_.append(var.STR_BIT_32)
+				retu_.append("ff")
+				retu_.append(hex(0xE0 + reg_tmp[1])[2:])
+				return retu_
+			value, size = (
+				(split[0], var.DWORD) if len_tmp else (split[1], var.sizes[split[0]])
+			)
+			value = func.convertInt(value) - var.addr - 1 - (size >> 1)
+			size_tmp = func.findSize(value, True, True)
+			if size < size_tmp:
+				func.raiseError(
+					"Overflow Error",
+					f"Used size({size}) is smaller than should({size_tmp}) used.",
+					line=index,
+				)
+			if size == var.DWORD:
+				value -= 1
+				retu_.append(var.STR_BIT_32)
+			retu_.append("eb" if size == var.BYTE else "e9")
+			retu_ += func.memoryProc(value, size)
+			return retu_
+		case "not":
+			return func.command_template(split, var.spec_inst["not"])
+		case "not":
+			return func.command_template(split, var.spec_inst["neg"])
+		case "inc":
+			tmp = _OP2IC(0x40, split[0])  # I know _OP2IC is a bad name for function.
+			return tmp if tmp else func.command_template(split, var.spec_inst["inc"])
+		case "dec":
+			tmp = _OP2IC(0x48, split[0])
+			return tmp if tmp else func.command_template(split, var.spec_inst["dec"])
+		case "mov":
+			if split[0][-1] == ",":  # Check if first value size notation or real value.
+				pass
+				# _command_mov(split[0][:-1], split[1])
 			pass
+			# _command_mov(split[1][:-1], split[2], var.sizes[split[0]])
+		case _:
+			if command[0] == ":":
+				command = command[1:]
+				if command in var.constants:
+					func.raiseError(
+						"Constant Overwrite",
+						"Is acceptable in this version.",
+						False,
+						index,
+					)
+				var.constants[command] = var.addr
 	return None
 
 
