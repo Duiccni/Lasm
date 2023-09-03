@@ -105,7 +105,7 @@ def findSize(
 		return var.BYTE
 	tmp = 1
 	if x < 0:
-		x = (-x << 1) - 2
+		x = (-x << 1) - 1  # I still dont know if i have to do -2 or -1 but i rather -1.
 	elif forge_signed:
 		x <<= 1
 	if x > 0xFFFF_FFFF:

@@ -15,6 +15,7 @@ start_t = time.time()
 import variables as var
 import functions as func  # type: ignore
 
+'''
 test_case: list[str] = (
 	# mov <register>, <constant>
 	[f"mov {i}, 0x45" for i in var.regs8]
@@ -41,15 +42,17 @@ test_case: list[str] = (
 		"mov dword *0x1234, 0x10000",
 	]
 )
+'''
 
-# for _sub in var.test_cases:
-# 	test_case += _sub
+test_case: list[str] = []
+for _sub in var.test_cases:
+	test_case += _sub
 
 TClen = len(test_case)
 _disable = False  # defines is the instruction gonna be runned.
 
 var.settings.mode(
-	20, False, False, False
+	22, False, False, False
 )  # Actualy these values are default values but while i debuging i use this function for making it more easyly.
 
 
@@ -63,19 +66,25 @@ def foo(bar: int) -> int:
 	return foo(bar - 1) * bar
 '''
 
-"""
+
 def _command_mov(value1: str, value2: str, size: int | None = None) -> list[str]:
-	retu: list[str] = []
+	retu_: list[str] = []
 	if value1[0] == "*":
-		pass
-	else:
-		tmp = func.getRegister(value1)
+		v1_ptr = func.convertInt(value2[1:])
 		if value2[0].isalpha():
+			v2_reg = func.getRegister(value2)
+		else:
+			v2_value = func.convertInt(value2)
+			pass # reg, const
+	else:
+		v1_reg = func.getRegister(value1)
+		if value2[0].isalpha():
+			v2_reg = func.getRegister(value2)
 			pass # reg, reg
 		else:
+			v2_value = func.convertInt(value2)
 			pass # reg, const
-	return retu
-"""
+	return retu_
 
 
 def _OP2IC(
@@ -95,9 +104,9 @@ def procCase(_case: str) -> list[str] | None:
 	split = func.splitWithoutSpecs(_case)
 	command = split[0]
 	split.pop(0)
+	retu_: list[str]
 
 	if not split and command[0].isalpha() and len(command) == 3:
-		print(split, _case)
 		return [var.one_inst[command]]
 
 	match command:
@@ -119,10 +128,11 @@ def procCase(_case: str) -> list[str] | None:
 				split.pop(0)
 			else:
 				c_size = 0
+			retu_ = []
 			for num in split:
 				num = num.rstrip(",")
 				if num[0] == '"':
-					return [
+					retu_ += [
 						func.zeroExtend(hex(ord(char)), notation=False)
 						for char in num[1:-1]
 					]
@@ -139,7 +149,8 @@ def procCase(_case: str) -> list[str] | None:
 								line=index,
 							)
 						size = c_size
-					return func.memoryProc(tmp, size)
+					retu_ += func.memoryProc(tmp, size)
+			return retu_
 		case "times":
 			tmp = func.convertInt(split[0])
 			if tmp < 0:
@@ -156,11 +167,9 @@ def procCase(_case: str) -> list[str] | None:
 				+ test_case[index + 1 :]
 			)
 		case "jmp":
-			retu_: list[str] = []
+			retu_ = []
 			len_tmp = len(split) == 1
-			if (
-				len_tmp and split[0][0].isalpha()
-			):  # Copy of func.outline_part1 but without 8 bit registers.
+			if len_tmp and split[0][0].isalpha():  # Copy of func.outline_part1 but without 8 bit registers.
 				reg_tmp = func.getRegister(split[0])
 				if reg_tmp[1] == var.DWORD:
 					retu_.append(var.STR_BIT_32)
@@ -168,7 +177,7 @@ def procCase(_case: str) -> list[str] | None:
 				retu_.append(hex(0xE0 + reg_tmp[1])[2:])
 				return retu_
 			value, size = (
-				(split[0], var.DWORD) if len_tmp else (split[1], var.sizes[split[0]])
+				(split[0], var.WORD) if len_tmp else (split[1], var.sizes[split[0]])
 			)
 			value = func.convertInt(value) - var.addr - 1 - (size >> 1)
 			size_tmp = func.findSize(value, True, True)
@@ -270,12 +279,15 @@ if __name__ == "__main__":
 			if not retu:
 				print()
 			else:
+				tmp = var.settings.tab_size - len(case_)
 				print(
-					" " * (var.settings.tab_size - len(case_)) + var.colors.DARK,
+					" " * (tmp) + var.colors.DARK,
 					("" if retu[0] == var.STR_BIT_32 else "   ")
 					+ " ".join(retu)
 					+ var.colors.ENDL,
 				)
+				if tmp < 0:
+					func.raiseError(f"Print Breakpoint", f"var.settings.tab_size({var.settings.tab_size}, +{-tmp}) not big enough.", False, index)
 		if retu:
 			var.addr += len(retu)
 			var.memory += retu
