@@ -1,4 +1,4 @@
-# LASM (On Work)
+# LASM v0.2.1 (On Work)
 Lime Assembler
 This is a simple **32-bit x86 assembly** language written in **python 3.11.5**.
 It supports all basic x86 instructions and some advanced instructions.

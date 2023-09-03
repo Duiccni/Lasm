@@ -1,3 +1,6 @@
+VERSION = "v0.2.1"
+AUTHOR = "Egemen Yalın"
+
 # from collections.abc import Callable, Iterable, Mapping
 import time
 
@@ -76,7 +79,45 @@ def _command_mov(value1: str, value2: str, size: int | None = None) -> list[str]
 
 
 def procCase(_case: str) -> list[str] | None:
-	pass
+	global test_case, TClen, _disable
+	split = func.splitWithoutSpecs(_case)
+	command = split[0]
+	split.pop(0)
+
+	if not split and command[0].isalpha() and len(command) == 3:
+		return [var.one_inst[command]]
+
+	match command:
+		case "org":
+			func.raiseError(
+				"Command", "'org' can only be used in first line of code", False, index
+			)
+		case "con":
+			if split[0] in var.constants:
+				func.raiseError(
+					"Constant Overwrite", "Is acceptalbe in this version.", False, index
+				)
+			var.constants[split[0]] = func.convertInt(split[1])
+		case "flush":
+			var.constants.clear()
+		case "def":
+			if split[0][0].isalpha():
+				c_size = var.sizes[split[0]]
+				split.pop(0)
+			else:
+				c_size = 0
+			for num in split:
+				num = num.rstrip(",")
+				if num[0] == '"':
+					return [
+						func.zeroExtend(hex(ord(char)), notation=False)
+						for char in num[1:-1]
+					]
+				else:
+					tmp = func.convertInt(num)
+		case _:
+			pass
+	return None
 
 
 '''
@@ -96,7 +137,10 @@ var.colors = newColors
 
 if __name__ == "__main__":
 	# print(foo(5))
-	if test_case[0].startswith("0rg"):
+	if test_case[0] == "info":
+		print(f"LASM Assmebler {VERSION} Created by {AUTHOR}.")
+
+	if test_case[0].startswith("org"):
 		print("\t", test_case[0])
 		var.addr = func.toInt(test_case[0][4:], False)
 		var.orgin = var.addr
