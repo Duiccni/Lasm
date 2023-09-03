@@ -196,7 +196,7 @@ if __name__ == "__main__":  # Test functions.
 	var.orgin = 0x10
 	var.addr = 0x20
 
-	print(f"{var.colors.DARK}toInt\t\t{var.colors.ENDL}", toInt("0x7c00", False))
+	print(f"{var.colors.DARK}toInt   \t\t{var.colors.ENDL}", toInt("0x7c00", False))
 	print(f"{var.colors.DARK}_calculate\t\t{var.colors.ENDL}", _calculate("3 - 4 + 6"))
 	print(
 		f"{var.colors.DARK}convertInt\t\t{var.colors.ENDL}", convertInt("(20 - $ + $$)")
@@ -206,10 +206,10 @@ if __name__ == "__main__":  # Test functions.
 		f"{var.colors.DARK}zeroExtend\t\t{var.colors.ENDL}",
 		zeroExtend("0x32", var.DWORD, False),
 	)
-	print(f"{var.colors.DARK}toHex\t\t{var.colors.ENDL}", toHex(-1))
+	print(f"{var.colors.DARK}toHex   \t\t{var.colors.ENDL}", toHex(-1))
 	print(f"{var.colors.DARK}findSize\t\t{var.colors.ENDL}", findSize(-192))
 	print(
-		f"{var.colors.DARK}splitWithoutSpecs\t\t{var.colors.ENDL}",
+		f"{var.colors.DARK}splitWithoutSpecs\t{var.colors.ENDL}",
 		splitWithoutSpecs('a b c "a b c" (4 + 3)'),
 	)
 	print(
@@ -221,7 +221,7 @@ if __name__ == "__main__":  # Test functions.
 		outline_part1(var.WORD, 0x40),
 	)
 	print(
-		f"{var.colors.DARK}command_template\t\t{var.colors.ENDL}",
+		f"{var.colors.DARK}command_template\t{var.colors.ENDL}",
 		command_template(["si"], 0xD0, 0xF6, "16"),
 	)
 
