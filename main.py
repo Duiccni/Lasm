@@ -15,7 +15,6 @@ start_t = time.time()
 import variables as var
 import functions as func  # type: ignore
 
-'''
 test_case: list[str] = (
 	# mov <register>, <constant>
 	[f"mov {i}, 0x45" for i in var.regs8]
@@ -38,21 +37,19 @@ test_case: list[str] = (
 	+ [
 		"mov byte *0x1234, 0x10",
 		"mov *0x1234, 0x1000",  # size = word
-		"mov 0x10000",  # size = dword
 		"mov dword *0x1234, 0x10000",
 	]
 )
-'''
 
-test_case: list[str] = []
-for _sub in var.test_cases:
-	test_case += _sub
+# test_case: list[str] = []
+# for _sub in var.test_cases:
+# 	test_case += _sub
 
 TClen = len(test_case)
 _disable = False  # defines is the instruction gonna be runned.
 
 var.settings.mode(
-	22, False, False, False
+	26, False, False, False
 )  # Actualy these values are default values but while i debuging i use this function for making it more easyly.
 
 
@@ -66,7 +63,7 @@ def foo(bar: int) -> int:
 	return foo(bar - 1) * bar
 '''
 
-
+"""
 def _command_mov(value1: str, value2: str, size: int | None = None) -> list[str]:
 	retu_: list[str] = []
 	if value1[0] == "*":
@@ -81,9 +78,73 @@ def _command_mov(value1: str, value2: str, size: int | None = None) -> list[str]
 		if value2[0].isalpha():
 			v2_reg = func.getRegister(value2)
 			pass # reg, reg
+		elif value2[0] == "*":
+			v2_value = func.convertInt(value2[1:])
+			if v1_reg[1] == var.DWORD:
+				retu_.append(var.STR_BIT_32)
+			retu_.append(hex(0xB0 + v1_reg[0])[2:])
+			tmp = func.findSize(v2_value)
+			if tmp > v1_reg[1]:
+				func.raiseError(
+					"Overflow Error",
+					f"Used size({v1_reg[1]}) is smaller than should({tmp}) used.",
+					line=index,
+				)
+			retu_ += func.memoryProc(v2_value, v1_reg[1])
 		else:
-			v2_value = func.convertInt(value2)
 			pass # reg, const
+	return retu_
+"""
+
+# mov <reg>, <const> FINISHED
+# mov <reg>, <ptr>
+# mov <reg>, <reg> FINISHED
+# mov <ptr>, <reg>
+
+# mov <size> <ptr>, <const>
+# mov <ptr>, <const> (word)
+def _command_mov(value1: str, value2: str, size: int | None = None) -> list[str]:
+	retu_: list[str] = []
+	if value1[0] == "*":
+		v1_tmp = func.convertInt(value1[1:])
+		if value2[0].isalpha():
+			v2_tmp = func.getRegister(value2)
+			tmp2 = func.memoryProc(v1_tmp, var.WORD)
+			if v2_tmp[0] == 0:
+				return func.outline_part1(v2_tmp[1], 0xA2) + tmp2
+			return func.outline_part1(v2_tmp[1], 0x88) + [func.zeroExtend(hex((v2_tmp[0] << 3) + 6), notation=False)] + tmp2
+		else:
+			size = size if size else var.WORD
+			if size == var.DWORD:
+				retu_.append(var.STR_BIT_32)
+			retu_.append("C6" if size == var.BYTE else "C7")
+			retu_.append("06")
+			retu_ += func.memoryProc(v1_tmp, var.WORD)
+			retu_ += func.memoryProc(func.convertInt(value2), size)
+	else:
+		v1_tmp = func.getRegister(value1, False)
+		if v1_tmp[1] == var.DWORD:
+			retu_.append(var.STR_BIT_32)
+		if value2[0] == "*":
+			tmp = v1_tmp[0] % var.REG_INDEX_LEN
+			tmp2 = func.memoryProc(func.convertInt(value2[1:]), var.WORD)
+			if tmp == 0:
+				return func.outline_part1(v1_tmp[1], 0xA0) + tmp2
+			return func.outline_part1(v1_tmp[1], 0x8A) + [func.zeroExtend(hex((v1_tmp[0] % var.REG_INDEX_LEN << 3) + 6), notation=False)] + tmp2
+		elif value2[0].isalpha():
+			v2_tmp = var.str_regs.index(value2[-2:])
+			if v1_tmp[0] == v2_tmp:
+				func.raiseError(
+					"Warning",
+					"You are trying to move a register to itself.",
+					False,
+					index,
+				)
+			retu_.append("88" if v1_tmp[1] == var.BYTE else "89")
+			retu_.append(hex(0xC0 + v1_tmp[0] % var.REG_INDEX_LEN + (v2_tmp % var.REG_INDEX_LEN << 3))[2:])
+		else:
+			retu_.append(hex(0xB0 + v1_tmp[0])[2:])
+			retu_ += func.memoryProc(func.convertInt(value2), v1_tmp[1])
 	return retu_
 
 
@@ -169,7 +230,9 @@ def procCase(_case: str) -> list[str] | None:
 		case "jmp":
 			retu_ = []
 			len_tmp = len(split) == 1
-			if len_tmp and split[0][0].isalpha():  # Copy of func.outline_part1 but without 8 bit registers.
+			if (
+				len_tmp and split[0][0].isalpha()
+			):  # Copy of func.outline_part1 but without 8 bit registers.
 				reg_tmp = func.getRegister(split[0])
 				if reg_tmp[1] == var.DWORD:
 					retu_.append(var.STR_BIT_32)
@@ -205,10 +268,8 @@ def procCase(_case: str) -> list[str] | None:
 			return tmp if tmp else func.command_template(split, var.spec_inst["dec"])
 		case "mov":
 			if split[0][-1] == ",":  # Check if first value size notation or real value.
-				pass
-				# _command_mov(split[0][:-1], split[1])
-			pass
-			# _command_mov(split[1][:-1], split[2], var.sizes[split[0]])
+				return _command_mov(split[0][:-1], split[1])
+			return _command_mov(split[1][:-1], split[2], var.sizes[split[0]])
 		case _:
 			if command[0] == ":":
 				command = command[1:]
@@ -269,7 +330,7 @@ if __name__ == "__main__":
 		retu = None if _disable else procCase(case_)
 		if not var.settings.perf_print:
 			print(
-				func.zeroExtend(hex(index), notation=False) + var.colors.DARK,
+				func.zeroExtend(hex(index % 0x100), notation=False) + var.colors.DARK,
 				("" if not retu else func.zeroExtend(hex(var.addr), var.WORD, False))
 				+ ("" if _disable else var.colors.ENDL)
 				+ "\t",
@@ -287,7 +348,12 @@ if __name__ == "__main__":
 					+ var.colors.ENDL,
 				)
 				if tmp < 0:
-					func.raiseError(f"Print Breakpoint", f"var.settings.tab_size({var.settings.tab_size}, +{-tmp}) not big enough.", False, index)
+					func.raiseError(
+						f"Print Breakpoint",
+						f"var.settings.tab_size({var.settings.tab_size}, +{-tmp}) not big enough.",
+						False,
+						index,
+					)
 		if retu:
 			var.addr += len(retu)
 			var.memory += retu

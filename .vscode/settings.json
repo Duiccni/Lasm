@@ -1,4 +1,4 @@
 {
     "python.analysis.typeCheckingMode": "strict",
-    "editor.fontFamily": "'Courier New', Jetbrains Mono, Consolas, monospace"
+    "editor.fontFamily": "Jetbrains Mono,'Courier New',  Consolas, monospace"
 }

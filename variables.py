@@ -58,7 +58,7 @@ orgin = 0
 # BIT_32 = 0x66
 STR_BIT_32 = "66"
 
-regs8 = ["al", "cl", "bl", "dl", "ah", "bh", "ch", "dh"]
+regs8 = ["al", "cl", "dl", "bl", "ah", "ch", "dh", "bh"]
 regs16_32 = ["ax", "cx", "dx", "bx", "sp", "bp", "si", "di"]
 
 str_regs = regs8 + regs16_32

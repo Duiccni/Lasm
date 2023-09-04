@@ -69,8 +69,14 @@ def zeroExtend(x: str, size: int = var.BYTE, notation: bool = True) -> str:
 	"""
 	if x.startswith("0x"):
 		x = x[2:]
-	tmp = "0" * (size - len(x)) + x
-	return "0x" + tmp if notation else tmp
+	tmp = size - len(x)
+	if tmp < 0:
+		raiseError(
+			"Overflow Error",
+			"zeroExtend function found an Negative value.",
+		)
+	tmp2 = "0" * tmp + x
+	return "0x" + tmp2 if notation else tmp2
 
 
 def toHex(x: int, size: int = var.BYTE) -> str:
@@ -142,7 +148,7 @@ def memoryProc(x: int, size: int) -> list[str]:
 	return tmp
 
 
-def getRegister(x: str) -> tuple[int, int]:
+def getRegister(x: str, mod: bool = True) -> tuple[int, int]:
 	"""
 	Returns Register values -> (index, size).
 	>>> getRegister("eax")
@@ -151,7 +157,7 @@ def getRegister(x: str) -> tuple[int, int]:
 
 	tmp = var.str_regs.index(x[-2:])
 	return (
-		tmp % var.REG_INDEX_LEN,
+		tmp % var.REG_INDEX_LEN if mod else tmp,
 		var.DWORD
 		if len(x) == 3
 		else (var.BYTE if tmp < var.REG_INDEX_LEN else var.WORD),
