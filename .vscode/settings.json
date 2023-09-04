@@ -1,4 +1,3 @@
 {
-    "python.analysis.typeCheckingMode": "strict",
-    "editor.fontFamily": "Jetbrains Mono,'Courier New',  Consolas, monospace"
+    "python.analysis.typeCheckingMode": "basic"
 }

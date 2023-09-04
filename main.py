@@ -6,7 +6,7 @@ import time
 
 # from os import system
 # from threading import Thread
-# from typing import Any, Union
+from typing import Any  # , Union
 
 # system("cls")
 
@@ -19,7 +19,7 @@ test_case: list[str] = (
 	# mov <register>, <constant>
 	[f"mov {i}, 0x45" for i in var.regs8]
 	+ [f"mov {i}, 0x4567" for i in var.regs16_32]
-	+ [f"mov e{i}, 0x45670123" for i in var.regs16_32]
+	+ [f"mov e{i}, 0x4567_0123" for i in var.regs16_32]
 	# mov <register>, <register>
 	+ [f"mov {i}, {k}" for i in var.regs8 for k in var.regs8]
 	+ [f"mov {i}, {k}" for i in var.regs16_32 for k in var.regs16_32]
@@ -104,67 +104,64 @@ def _command_mov(value1: str, value2: str, size: int | None = None) -> list[str]
 
 # mov <size> <ptr>, <const>
 # mov <ptr>, <const> (word)
-def _command_mov(value1: str, value2: str, size: int | None = None) -> list[str]:
+def convertIt(x: str, mod_reg: bool = True) -> tuple[Any, int]:
+	if x[0] == "*":
+		return func.convertInt(x[1:]), 1
+	if x[0].isalpha():
+		return func.getRegister(x, mod_reg), 2
+	return func.convertInt(x), 0
+
+
+def _new_command_mov(value1: str, value2: str, size: int | None = None) -> list[str]:
+	v1, v2 = convertIt(value1, False), convertIt(value2)
 	retu_: list[str] = []
-	if value1[0] == "*":
-		v1_tmp = func.convertInt(value1[1:])
-		if value2[0].isalpha():
-			v2_tmp = func.getRegister(value2)
-			tmp2 = func.memoryProc(v1_tmp, var.WORD)
-			if v2_tmp[0] == 0:
-				return func.outline_part1(v2_tmp[1], 0xA2) + tmp2
-			return (
-				func.outline_part1(v2_tmp[1], 0x88)
-				+ [func.zeroExtend(hex((v2_tmp[0] << 3) + 6), notation=False)]
-				+ tmp2
-			)
-		else:
-			size = size if size else var.WORD
-			if size == var.DWORD:
-				retu_.append(var.STR_BIT_32)
-			retu_.append("C6" if size == var.BYTE else "C7")
-			retu_.append("06")
-			retu_ += func.memoryProc(v1_tmp, var.WORD)
-			retu_ += func.memoryProc(func.convertInt(value2), size)
-	else:
-		v1_tmp = func.getRegister(value1, False)
-		if v1_tmp[1] == var.DWORD:
-			retu_.append(var.STR_BIT_32)
-		if value2[0] == "*":
-			tmp = v1_tmp[0] % var.REG_INDEX_LEN
-			tmp2 = func.memoryProc(func.convertInt(value2[1:]), var.WORD)
+	tmp = v1[1] == 2  # Check is Register
+	if tmp or v2[1] == 2:
+		size = v1[0][1] if tmp else v2[0][1]
+	match (v1[1], v2[1]):
+		case (2, 0):
+			retu_.append(hex(0xB0 + v1[0][0])[2:])
+			retu_ += func.memoryProc(v2[0], size)  # type: ignore
+		case (2, 1):
+			tmp = v1[0][0] % var.REG_INDEX_LEN
+			tmp2 = func.memoryProc(v2[0], var.WORD)
 			if tmp == 0:
-				return func.outline_part1(v1_tmp[1], 0xA0) + tmp2
+				return func.outline_part1(v1[0][1], 0xA0) + tmp2
 			return (
-				func.outline_part1(v1_tmp[1], 0x8A)
-				+ [
-					func.zeroExtend(
-						hex((v1_tmp[0] % var.REG_INDEX_LEN << 3) + 6), notation=False
-					)
-				]
+				func.outline_part1(v1[0][1], 0x8A)
+				+ [func.zeroExtend(hex((tmp << 3) + 6), notation=False)]
 				+ tmp2
 			)
-		elif value2[0].isalpha():
-			v2_tmp = var.str_regs.index(value2[-2:])
-			if v1_tmp[0] == v2_tmp:
+		case (
+			2,
+			2,
+		):  # I tried to put (_REG, _REG) but its gives me this error on line 185 idk why 'cannot access local variable '_REG' where it is not associated with a value'
+			tmp = v1[0][0] % var.REG_INDEX_LEN
+			if tmp == v2[0][0]:
 				func.raiseError(
 					"Warning",
 					"You are trying to move a register to itself.",
 					False,
 					index,
 				)
-			retu_.append("88" if v1_tmp[1] == var.BYTE else "89")
-			retu_.append(
-				hex(
-					0xC0
-					+ v1_tmp[0] % var.REG_INDEX_LEN
-					+ (v2_tmp % var.REG_INDEX_LEN << 3)
-				)[2:]
+			retu_.append("88" if v1[0][1] == var.BYTE else "89")
+			retu_.append(hex(0xC0 + tmp + (v2[0][0] << 3))[2:])
+		case (1, 0):
+			size = size if size else var.WORD
+			retu_.append("c6" if size == var.BYTE else "c7")
+			retu_.append("06")
+			retu_ += func.memoryProc(v1[0], var.WORD)
+			retu_ += func.memoryProc(v2[0], size)
+		case (1, 2):
+			tmp = func.memoryProc(v1[0], var.WORD)
+			if v2[0][0] == 0:
+				return func.outline_part1(v2[0][1], 0xA2) + tmp
+			return (
+				func.outline_part1(v2[0][1], 0x88)
+				+ [func.zeroExtend(hex((v2[0][0] << 3) + 6), notation=False)]
+				+ tmp
 			)
-		else:
-			retu_.append(hex(0xB0 + v1_tmp[0])[2:])
-			retu_ += func.memoryProc(func.convertInt(value2), v1_tmp[1])
-	return retu_
+	return [var.STR_BIT_32] + retu_ if size == var.DWORD else retu_
 
 
 def _OP2IC(
@@ -287,8 +284,8 @@ def procCase(_case: str) -> list[str] | None:
 			return tmp if tmp else func.command_template(split, var.spec_inst["dec"])
 		case "mov":
 			if split[0][-1] == ",":  # Check if first value size notation or real value.
-				return _command_mov(split[0][:-1], split[1])
-			return _command_mov(split[1][:-1], split[2], var.sizes[split[0]])
+				return _new_command_mov(split[0][:-1], split[1])
+			return _new_command_mov(split[1][:-1], split[2], var.sizes[split[0]])
 		case _:
 			if command[0] == ":":
 				command = command[1:]

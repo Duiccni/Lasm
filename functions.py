@@ -121,6 +121,7 @@ def findSize(
 		tmp <<= 1
 	return var.DWORD if (tmp == 6 and stay_align) else tmp
 
+_excluded = "_"
 
 def splitWithoutSpecs(x: str) -> list[str]:
 	retu: list[str] = []
@@ -131,9 +132,10 @@ def splitWithoutSpecs(x: str) -> list[str]:
 			include = not include
 			tmp += char
 		elif char == " " and include:
-			retu.append(tmp)
-			tmp = ""
-		else:
+			if tmp != "":
+				retu.append(tmp)
+				tmp = ""
+		elif tmp != _excluded:
 			tmp += char
 	retu.append(tmp) # Bug fixed.
 	return retu
