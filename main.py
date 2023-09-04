@@ -101,6 +101,7 @@ def _command_mov(value1: str, value2: str, size: int | None = None) -> list[str]
 # mov <reg>, <reg> FINISHED
 # mov <ptr>, <reg>
 
+
 # mov <size> <ptr>, <const>
 # mov <ptr>, <const> (word)
 def _command_mov(value1: str, value2: str, size: int | None = None) -> list[str]:
@@ -112,7 +113,11 @@ def _command_mov(value1: str, value2: str, size: int | None = None) -> list[str]
 			tmp2 = func.memoryProc(v1_tmp, var.WORD)
 			if v2_tmp[0] == 0:
 				return func.outline_part1(v2_tmp[1], 0xA2) + tmp2
-			return func.outline_part1(v2_tmp[1], 0x88) + [func.zeroExtend(hex((v2_tmp[0] << 3) + 6), notation=False)] + tmp2
+			return (
+				func.outline_part1(v2_tmp[1], 0x88)
+				+ [func.zeroExtend(hex((v2_tmp[0] << 3) + 6), notation=False)]
+				+ tmp2
+			)
 		else:
 			size = size if size else var.WORD
 			if size == var.DWORD:
@@ -130,7 +135,15 @@ def _command_mov(value1: str, value2: str, size: int | None = None) -> list[str]
 			tmp2 = func.memoryProc(func.convertInt(value2[1:]), var.WORD)
 			if tmp == 0:
 				return func.outline_part1(v1_tmp[1], 0xA0) + tmp2
-			return func.outline_part1(v1_tmp[1], 0x8A) + [func.zeroExtend(hex((v1_tmp[0] % var.REG_INDEX_LEN << 3) + 6), notation=False)] + tmp2
+			return (
+				func.outline_part1(v1_tmp[1], 0x8A)
+				+ [
+					func.zeroExtend(
+						hex((v1_tmp[0] % var.REG_INDEX_LEN << 3) + 6), notation=False
+					)
+				]
+				+ tmp2
+			)
 		elif value2[0].isalpha():
 			v2_tmp = var.str_regs.index(value2[-2:])
 			if v1_tmp[0] == v2_tmp:
@@ -141,7 +154,13 @@ def _command_mov(value1: str, value2: str, size: int | None = None) -> list[str]
 					index,
 				)
 			retu_.append("88" if v1_tmp[1] == var.BYTE else "89")
-			retu_.append(hex(0xC0 + v1_tmp[0] % var.REG_INDEX_LEN + (v2_tmp % var.REG_INDEX_LEN << 3))[2:])
+			retu_.append(
+				hex(
+					0xC0
+					+ v1_tmp[0] % var.REG_INDEX_LEN
+					+ (v2_tmp % var.REG_INDEX_LEN << 3)
+				)[2:]
+			)
 		else:
 			retu_.append(hex(0xB0 + v1_tmp[0])[2:])
 			retu_ += func.memoryProc(func.convertInt(value2), v1_tmp[1])
