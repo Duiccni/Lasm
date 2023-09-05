@@ -60,6 +60,7 @@ STR_BIT_32 = "66"
 
 regs8 = ["al", "cl", "dl", "bl", "ah", "ch", "dh", "bh"]
 regs16_32 = ["ax", "cx", "dx", "bx", "sp", "bp", "si", "di"]
+seg_regs = ["cs", "ss", "ds", "es", "fs", "gs"]
 
 str_regs = regs8 + regs16_32
 
@@ -69,6 +70,13 @@ REG_INDEX_LEN = 8
 one_inst = {
 	"hlt": "f4",
 	"nop": "90",
+	"cmc": "f5",
+	"clc": "f8",
+	"stc": "f9",
+	"cli": "fa",
+	"sti": "fb",
+	"cld": "fc",
+	"std": "fd",
 }
 
 spec_inst = {
@@ -76,6 +84,11 @@ spec_inst = {
 	"neg": [0xD8, 0xF6, "1e"],
 	"inc": [0xC0, 0xFE, "06"],
 	"dec": [0xC8, 0xFE, "0e"],
+}
+
+spec_values = {
+	"mbr": 0x55AA,
+	"borg": 0x7C00,
 }
 
 added: list[str] = []

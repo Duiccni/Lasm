@@ -15,6 +15,7 @@ start_t = time.time()
 import variables as var
 import functions as func  # type: ignore
 
+'''
 test_case: list[str] = (
 	# mov <register>, <constant>
 	[f"mov {i}, 0x45" for i in var.regs8]
@@ -40,6 +41,15 @@ test_case: list[str] = (
 		"mov dword *0x1234, 0x10000",
 	]
 )
+'''
+
+test_case = (
+	[f"push {i}" for i in var.regs16_32]
+	+ [f"push e{i}" for i in var.regs16_32]
+	+ [f"push {i}" for i in var.seg_regs]
+	+ ["push 0x4321", "push byte 0x4321", "push 0x43210", "push dword 0x43210"]
+	+ ["push *0x4321", "push dword *0x4321", "push *0x2132312"]
+)
 
 # test_case: list[str] = []
 # for _sub in var.test_cases:
@@ -53,57 +63,6 @@ var.settings.mode(
 )  # Actualy these values are default values but while i debuging i use this function for making it more easyly.
 
 
-'''
-def foo(bar: int) -> int:
-	"""
-	An test command. (its basicly calculates factorial.)
-	"""
-	if bar == 1:
-		return 1
-	return foo(bar - 1) * bar
-'''
-
-"""
-def _command_mov(value1: str, value2: str, size: int | None = None) -> list[str]:
-	retu_: list[str] = []
-	if value1[0] == "*":
-		v1_ptr = func.convertInt(value2[1:])
-		if value2[0].isalpha():
-			v2_reg = func.getRegister(value2)
-		else:
-			v2_value = func.convertInt(value2)
-			pass # reg, const
-	else:
-		v1_reg = func.getRegister(value1)
-		if value2[0].isalpha():
-			v2_reg = func.getRegister(value2)
-			pass # reg, reg
-		elif value2[0] == "*":
-			v2_value = func.convertInt(value2[1:])
-			if v1_reg[1] == var.DWORD:
-				retu_.append(var.STR_BIT_32)
-			retu_.append(hex(0xB0 + v1_reg[0])[2:])
-			tmp = func.findSize(v2_value)
-			if tmp > v1_reg[1]:
-				func.raiseError(
-					"Overflow Error",
-					f"Used size({v1_reg[1]}) is smaller than should({tmp}) used.",
-					line=index,
-				)
-			retu_ += func.memoryProc(v2_value, v1_reg[1])
-		else:
-			pass # reg, const
-	return retu_
-"""
-
-# mov <reg>, <const> FINISHED
-# mov <reg>, <ptr>
-# mov <reg>, <reg> FINISHED
-# mov <ptr>, <reg>
-
-
-# mov <size> <ptr>, <const>
-# mov <ptr>, <const> (word)
 def convertIt(x: str, mod_reg: bool = True) -> tuple[Any, int]:
 	if x[0] == "*":
 		return func.convertInt(x[1:]), 1
@@ -111,7 +70,13 @@ def convertIt(x: str, mod_reg: bool = True) -> tuple[Any, int]:
 		return func.getRegister(x, mod_reg), 2
 	return func.convertInt(x), 0
 
+# mov <reg>, <const> FINISHED
+# mov <reg>, <ptr>
+# mov <reg>, <reg> FINISHED
+# mov <ptr>, <reg>
 
+# mov <size> <ptr>, <const>
+# mov <ptr>, <const> (word)
 def _new_command_mov(value1: str, value2: str, size: int | None = None) -> list[str]:
 	v1, v2 = convertIt(value1, False), convertIt(value2)
 	retu_: list[str] = []
@@ -132,10 +97,7 @@ def _new_command_mov(value1: str, value2: str, size: int | None = None) -> list[
 				+ [func.zeroExtend(hex((tmp << 3) + 6), notation=False)]
 				+ tmp2
 			)
-		case (
-			2,
-			2,
-		):  # I tried to put (_REG, _REG) but its gives me this error on line 185 idk why 'cannot access local variable '_REG' where it is not associated with a value'
+		case (2, 2):
 			tmp = v1[0][0] % var.REG_INDEX_LEN
 			if tmp == v2[0][0]:
 				func.raiseError(
@@ -161,6 +123,47 @@ def _new_command_mov(value1: str, value2: str, size: int | None = None) -> list[
 				+ [func.zeroExtend(hex((v2[0][0] << 3) + 6), notation=False)]
 				+ tmp
 			)
+	return [var.STR_BIT_32] + retu_ if size == var.DWORD else retu_
+
+
+_segment_value = [ # 8((x + 1) % 4) + 6
+	["0e"], # 8 * 1 + 6
+	["16"], # 8 * 2 + 6
+	["1e"], # 8 * 3 + 6
+	["06"], # 8 * 0 + 6
+	["0f", "a0"],
+	["0f", "a8"],
+]
+
+# push <size> <const>
+# push <size> <ptr>
+# push <const> (word)
+# push <ptr> (word)
+# push <reg> # FINISHED
+# push <segment> # FINISHED
+def _command_push(value: str, size: int | None = None) -> list[str] | None:
+	retu_: list[str] = []
+	if size == None:
+		reg_index, size = func.getRegister(value)
+		if size == var.BYTE:
+			return
+		if size == -1:
+			return _segment_value[reg_index]
+		retu_.append(hex(0x50 + reg_index)[2:])
+	elif value[0] == "*":
+		retu_.append("36")
+		retu_ += func.memoryProc(func.convertInt(value[1:]), size)
+	else:
+		retu_.append("6a" if size == var.BYTE else "68")
+		v1 = func.convertInt(value)
+		tmp = func.findSize(v1)
+		if size < tmp:
+			func.raiseError(
+				"Overflow Error",
+				f"Used size({size}) is smaller than should({tmp}) used.",
+				line=index,
+			)
+		retu_ += func.memoryProc(v1, size)
 	return [var.STR_BIT_32] + retu_ if size == var.DWORD else retu_
 
 
@@ -286,6 +289,13 @@ def procCase(_case: str) -> list[str] | None:
 			if split[0][-1] == ",":  # Check if first value size notation or real value.
 				return _new_command_mov(split[0][:-1], split[1])
 			return _new_command_mov(split[1][:-1], split[2], var.sizes[split[0]])
+		case "push":  # 0x36
+			if split[0][0].isalpha():
+				if len(split) == 1:
+					return _command_push(split[0])
+				else:
+					return _command_push(split[1], var.sizes[split[0]])
+			return _command_push(split[0], var.WORD)
 		case _:
 			if command[0] == ":":
 				command = command[1:]
@@ -297,6 +307,8 @@ def procCase(_case: str) -> list[str] | None:
 						index,
 					)
 				var.constants[command] = var.addr
+			else:
+				func.raiseError("Command", f"'{command}'({hex(func.convertInt(command))[2:]}) isn't reconized by Assembler.", line=index)
 	return None
 
 

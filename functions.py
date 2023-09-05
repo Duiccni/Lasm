@@ -11,7 +11,9 @@ def toInt(x: str, spec: bool = True) -> int:
 		if x[0] == "$":
 			if len(x) == 1:
 				return var.addr
-			return var.orgin
+			if x[1] == "$":
+				return var.orgin
+			return var.spec_values[x[1:]]
 		if x[0] == "&":
 			return var.constants[x[1:]]
 	if x[0] == "?":
@@ -135,7 +137,7 @@ def splitWithoutSpecs(x: str) -> list[str]:
 			if tmp != "":
 				retu.append(tmp)
 				tmp = ""
-		elif tmp != _excluded:
+		elif char != _excluded:  # tmp -> char (Bux fix.)
 			tmp += char
 	retu.append(tmp) # Bug fixed.
 	return retu
@@ -155,7 +157,12 @@ def getRegister(x: str, mod: bool = True) -> tuple[int, int]:
 	Returns Register values -> (index, size).
 	>>> getRegister("eax")
 	(0, var.DWORD)
+	>>> getRegister("ds"):  # Segment Register
+	(2, -1)
 	"""
+
+	if x in var.seg_regs:
+		return (var.seg_regs.index(x), -1)
 
 	tmp = var.str_regs.index(x[-2:])
 	return (
